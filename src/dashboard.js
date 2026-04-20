@@ -23,6 +23,14 @@ async function showDashboard(cwd) {
       prTemplate: checkPRTemplate(cwd),
     };
 
+    // Check if any metric returned an error
+    if (metrics.commits.error) {
+      throw new Error(metrics.commits.error);
+    }
+    if (metrics.branches.error) {
+      throw new Error(metrics.branches.error);
+    }
+
     displayDashboard(metrics);
     return {
       isGitRepo: true,

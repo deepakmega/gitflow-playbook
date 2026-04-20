@@ -5,7 +5,13 @@ import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROGRESS_FILE = path.join(homedir(), '.gitflow-playbook-progress.json');
+
+/**
+ * Get the path to the progress file
+ */
+function getProgressFile() {
+  return path.join(homedir(), '.gitflow-playbook-progress.json');
+}
 
 // Define all available badges
 const ALL_BADGES = [
@@ -52,7 +58,7 @@ const ALL_BADGES = [
  */
 export async function loadProgress() {
   try {
-    const data = await fs.readFile(PROGRESS_FILE, 'utf-8');
+    const data = await fs.readFile(getProgressFile(), 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -66,7 +72,7 @@ export async function loadProgress() {
  * Save progress data to file
  */
 export async function saveProgress(progress) {
-  await fs.writeFile(PROGRESS_FILE, JSON.stringify(progress, null, 2), 'utf-8');
+  await fs.writeFile(getProgressFile(), JSON.stringify(progress, null, 2), 'utf-8');
 }
 
 /**

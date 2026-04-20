@@ -7,7 +7,9 @@ import { homedir } from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const CONFIG_PATH = path.join(homedir(), '.gitflow-playbook-config.json');
+function getConfigPath() {
+  return path.join(homedir(), '.gitflow-playbook-config.json');
+}
 
 const BRANCH_PATTERNS = [
   { name: 'feature/* - For new features', value: 'feature' },
@@ -329,8 +331,9 @@ async function step6Summary(collectedData) {
 
 function saveConfig(data) {
   try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
-    console.log(chalk.green(`✓ Configuration saved to ${CONFIG_PATH}\n`));
+    const configPath = getConfigPath();
+    fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
+    console.log(chalk.green(`✓ Configuration saved to ${configPath}\n`));
     return true;
   } catch (error) {
     console.error(chalk.red(`✗ Failed to save config: ${error.message}`));
@@ -417,6 +420,6 @@ export async function runOnboarding(options = {}) {
     success: true,
     message: 'Onboarding completed successfully',
     data: collectedData,
-    configPath: CONFIG_PATH,
+    configPath: getConfigPath(),
   };
 }
