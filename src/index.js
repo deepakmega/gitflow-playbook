@@ -48,15 +48,15 @@ program
   .option('--first-pr-checklist', 'Show first PR checklist')
   .action(async (options) => {
     if (options.list) {
-      showBadges();
+      await showBadges();
     } else if (options.award) {
       await awardBadge(options.award);
     } else if (options.showProgress) {
-      showProgress();
+      await showProgress();
     } else if (options.firstPrChecklist) {
       firstPRChecklist();
     } else {
-      showProgress();
+      await showProgress();
     }
   });
 
