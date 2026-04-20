@@ -1,0 +1,23 @@
+# Commit message format: <type>: <subject>
+# Types: feat, fix, docs, style, refactor, test, chore
+# Subject line should be imperative, present tense: "add" not "added" or "adds"
+# Subject should not include a period (.) at the end
+# Reference issues at the end: Fixes #123, Closes #456
+
+# Example commit messages:
+# feat: add user authentication module
+# fix: resolve race condition in cache update
+# docs: update API documentation
+# style: format code according to style guide
+# refactor: simplify event handler logic
+# test: add unit tests for email validation
+# chore: update dependencies to latest versions
+
+# TEMPLATE RULES (remove this section before committing):
+# - Keep the subject line to 50 characters or less
+# - Capitalize the subject line
+# - Do not end the subject line with a period
+# - Use the imperative mood in the subject line
+# - Wrap the body at 72 characters
+# - Use the body to explain what and why, not how
+# - Separate subject from body with a blank line
