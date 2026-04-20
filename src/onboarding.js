@@ -79,7 +79,7 @@ ${chalk.yellow('Instead of:')} "This is wrong"
 ${chalk.yellow('Try:')} "This handles the happy path, but what if user is null?"
 `;
 
-function validateBranchName(input, pattern) {
+export function validateBranchName(input, pattern) {
   const branchRegex = {
     feature: /^feature\/[a-z0-9\-]+$/,
     bugfix: /^bugfix\/[a-z0-9\-]+$/,
@@ -96,7 +96,7 @@ function validateBranchName(input, pattern) {
   return true;
 }
 
-function validateCommitMessage(input) {
+export function validateCommitMessage(input) {
   if (!input || input.trim().length === 0) {
     return 'Commit message is required';
   }
@@ -115,7 +115,7 @@ function validateCommitMessage(input) {
   return true;
 }
 
-function validatePRTitle(input) {
+export function validatePRTitle(input) {
   if (!input || input.trim().length === 0) {
     return 'PR title is required';
   }
@@ -128,7 +128,7 @@ function validatePRTitle(input) {
   return true;
 }
 
-function validatePRDescription(input) {
+export function validatePRDescription(input) {
   if (!input || input.trim().length === 0) {
     return 'PR description is required';
   }
