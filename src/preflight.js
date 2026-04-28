@@ -2,17 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import chalk from 'chalk';
-
-const VALID_BRANCH_PATTERNS = [
-  /^feature\/.+/,
-  /^bugfix\/.+/,
-  /^hotfix\/.+/,
-  /^release\/.+/,
-  /^main$/,
-  /^develop$/,
-];
-
-const GIT_ROOT = findGitRoot();
+import {
+  DEFAULT_PLAYBOOK_CONFIG,
+  loadPlaybookConfig,
+  toRegexList,
+} from './config.js';
 
 function findGitRoot() {
   try {
@@ -26,13 +20,13 @@ function findGitRoot() {
   }
 }
 
-function checkGitRepository() {
-  if (!GIT_ROOT) {
+function checkGitRepository(gitRoot = null) {
+  if (!gitRoot) {
     console.error(chalk.red('✗ Not a git repository'));
     return false;
   }
 
-  const gitDir = path.join(GIT_ROOT, '.git');
+  const gitDir = path.join(gitRoot, '.git');
   if (!fs.existsSync(gitDir)) {
     console.error(chalk.red('✗ .git directory not found'));
     return false;
@@ -42,16 +36,15 @@ function checkGitRepository() {
   return true;
 }
 
-function checkBranch() {
+function checkBranch(playbookConfig = DEFAULT_PLAYBOOK_CONFIG) {
   try {
     const branch = execSync('git rev-parse --abbrev-ref HEAD', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
 
-    const isValid = VALID_BRANCH_PATTERNS.some((pattern) =>
-      pattern.test(branch)
-    );
+    const regexPatterns = toRegexList(playbookConfig.branchPatterns);
+    const isValid = regexPatterns.some((pattern) => pattern.test(branch));
 
     const result = {
       isValid,
@@ -64,7 +57,7 @@ function checkBranch() {
     } else {
       console.error(
         chalk.red(
-          `✗ Branch '${branch}' does not match gitflow pattern. Valid patterns: feature/*, bugfix/*, hotfix/*, release/*, main, develop`
+          `✗ Branch '${branch}' does not match gitflow pattern. Valid patterns: ${playbookConfig.branchPatterns.join(', ')}`
         )
       );
     }
@@ -103,9 +96,14 @@ function checkStagedFiles() {
   }
 }
 
-function checkChangelog() {
+function checkChangelog(gitRoot = null) {
+  if (!gitRoot) {
+    console.error(chalk.red('✗ Failed to determine git root'));
+    return { exists: false, isStaged: false, valid: false };
+  }
+
   try {
-    const changelogPath = path.join(GIT_ROOT, 'CHANGELOG.md');
+    const changelogPath = path.join(gitRoot, 'CHANGELOG.md');
     const changelogExists = fs.existsSync(changelogPath);
 
     if (!changelogExists) {
@@ -134,9 +132,12 @@ function checkChangelog() {
   }
 }
 
-function createPreCommitHook() {
-  const hooksDir = path.join(GIT_ROOT, '.git', 'hooks');
+function createPreCommitHook(gitRoot, playbookConfig = DEFAULT_PLAYBOOK_CONFIG) {
+  const hooksDir = path.join(gitRoot, '.git', 'hooks');
   const preCommitPath = path.join(hooksDir, 'pre-commit');
+  const validPatterns = playbookConfig.branchPatterns
+    .map((pattern) => `  "${pattern}"`)
+    .join('\n');
 
   const hookContent = `#!/bin/bash
 # Pre-commit hook: validate branch name
@@ -145,12 +146,7 @@ set -e
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 VALID_PATTERNS=(
-  "^feature/"
-  "^bugfix/"
-  "^hotfix/"
-  "^release/"
-  "^main$"
-  "^develop$"
+${validPatterns}
 )
 
 IS_VALID=false
@@ -163,7 +159,7 @@ done
 
 if [ "$IS_VALID" = false ]; then
   echo "✗ Branch '$BRANCH' does not match gitflow pattern"
-  echo "Valid patterns: feature/*, bugfix/*, hotfix/*, release/*, main, develop"
+  echo "Valid patterns: ${playbookConfig.branchPatterns.join(', ')}"
   exit 1
 fi
 
@@ -187,8 +183,8 @@ exit 0
   }
 }
 
-function createCommitMsgHook() {
-  const hooksDir = path.join(GIT_ROOT, '.git', 'hooks');
+function createCommitMsgHook(gitRoot) {
+  const hooksDir = path.join(gitRoot, '.git', 'hooks');
   const commitMsgPath = path.join(hooksDir, 'commit-msg');
 
   const hookContent = `#!/bin/bash
@@ -239,16 +235,28 @@ async function runPreflight(options = {}) {
   } = options;
 
   console.log(chalk.cyan('\n🔍 Running preflight checks...\n'));
+  const gitRoot = findGitRoot();
 
   // Check if in git repository
-  if (!checkGitRepository()) {
+  if (!checkGitRepository(gitRoot)) {
     process.exit(1);
+  }
+
+  const { config, path: configPath, error: configError } = loadPlaybookConfig({
+    cwd: gitRoot,
+    gitRoot,
+  });
+
+  if (configPath && !configError) {
+    console.log(chalk.green(`✓ Loaded config: ${configPath}`));
+  } else if (configError) {
+    console.log(chalk.yellow(`⚠ ${configError}`));
   }
 
   let allChecksValid = true;
 
   // Check branch
-  const branchCheck = checkBranch();
+  const branchCheck = checkBranch(config);
   if (!branchCheck.isValid) {
     allChecksValid = false;
   }
@@ -271,7 +279,7 @@ async function runPreflight(options = {}) {
   }
 
   // Check changelog
-  const changelogCheck = checkChangelog();
+  const changelogCheck = checkChangelog(gitRoot);
   if (!changelogCheck.valid) {
     allChecksValid = false;
   }
@@ -279,8 +287,8 @@ async function runPreflight(options = {}) {
   // Install hooks if not check-only
   if (!checkOnly) {
     console.log(chalk.cyan('\n📦 Installing git hooks...\n'));
-    const preCommitSuccess = createPreCommitHook();
-    const commitMsgSuccess = createCommitMsgHook();
+    const preCommitSuccess = createPreCommitHook(gitRoot, config);
+    const commitMsgSuccess = createCommitMsgHook(gitRoot);
 
     if (!preCommitSuccess || !commitMsgSuccess) {
       allChecksValid = false;

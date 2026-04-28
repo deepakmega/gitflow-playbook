@@ -2,6 +2,11 @@ import { execSync } from 'child_process';
 import { existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
+import {
+  DEFAULT_PLAYBOOK_CONFIG,
+  loadPlaybookConfig,
+  toRegexList,
+} from './config.js';
 
 async function showDashboard(cwd) {
   const gitDir = join(cwd, '.git');
@@ -16,9 +21,17 @@ async function showDashboard(cwd) {
   }
 
   try {
+    const { config, error: configError } = loadPlaybookConfig({
+      cwd,
+      gitRoot: cwd,
+    });
+    if (configError) {
+      console.log(chalk.yellow(`⚠ ${configError}`));
+    }
+
     const metrics = {
-      commits: analyzeCommits(cwd),
-      branches: analyzeBranches(cwd),
+      commits: analyzeCommits(cwd, config.commitTypes),
+      branches: analyzeBranches(cwd, config.branchPatterns),
       hooks: checkGitHooks(cwd),
       prTemplate: checkPRTemplate(cwd),
     };
@@ -47,14 +60,14 @@ async function showDashboard(cwd) {
   }
 }
 
-function analyzeCommits(cwd) {
+function analyzeCommits(cwd, commitTypes = DEFAULT_PLAYBOOK_CONFIG.commitTypes) {
   try {
     const log = execSync('git log --oneline --all', { cwd, encoding: 'utf-8' });
     const lines = log.trim().split('\n').filter(Boolean);
     const totalCommits = lines.length;
 
     const prefixCounts = {};
-    const prefixPatterns = ['feature', 'bugfix', 'hotfix', 'docs', 'style', 'refactor', 'test', 'chore'];
+    const prefixPatterns = commitTypes;
     
     // Initialize all prefixes
     prefixPatterns.forEach(p => {
@@ -100,7 +113,7 @@ function analyzeCommits(cwd) {
   }
 }
 
-function analyzeBranches(cwd) {
+function analyzeBranches(cwd, branchPatterns = DEFAULT_PLAYBOOK_CONFIG.branchPatterns) {
   try {
     const branchOutput = execSync('git branch -a', { cwd, encoding: 'utf-8' });
     const branches = branchOutput
@@ -110,11 +123,11 @@ function analyzeBranches(cwd) {
       .filter(Boolean)
       .filter(b => !b.startsWith('remotes/'));
 
-    const validPattern = /^(main|master|develop|feature\/|bugfix\/|hotfix\/|release\/)/;
+    const validPatterns = toRegexList(branchPatterns);
     let validCount = 0;
 
     branches.forEach(branch => {
-      if (validPattern.test(branch)) {
+      if (validPatterns.some((pattern) => pattern.test(branch))) {
         validCount++;
       }
     });
@@ -231,9 +244,10 @@ function calculateAdoptionScore(metrics) {
 function calculatePrefixCompliance(prefixCounts) {
   const total = Object.values(prefixCounts).reduce((a, b) => a + b, 0);
   if (total === 0) return 0;
-  
-  const compliantPrefixes = ['feature', 'bugfix', 'hotfix', 'docs', 'style', 'refactor', 'test', 'chore'];
-  const compliant = compliantPrefixes.reduce((sum, prefix) => sum + (prefixCounts[prefix] || 0), 0);
+
+  const compliant = Object.entries(prefixCounts)
+    .filter(([prefix]) => prefix !== 'other')
+    .reduce((sum, [, count]) => sum + count, 0);
   
   return Math.round((compliant / total) * 100);
 }

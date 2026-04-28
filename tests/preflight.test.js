@@ -126,6 +126,17 @@ describe('preflight.js', () => {
       expect(releaseResult.isValid).toBe(true);
       expect(releaseResult.branch).toBe('release/1.0.0');
     });
+
+    it('should support custom branch patterns via config input', () => {
+      execSync.mockReturnValue('task/custom-flow');
+
+      const result = checkBranch({
+        branchPatterns: ['^task/.+$'],
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.branch).toBe('task/custom-flow');
+    });
   });
 
   describe('checkStagedFiles()', () => {

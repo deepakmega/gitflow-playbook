@@ -62,6 +62,7 @@ gitflow-playbook dashboard
 ✅ **Preflight Checks** — Scan your repo for staging issues, missing CHANGELOGs, and branch compliance  
 ✅ **Badge System** — Gamified milestones (First Commit, Branch Master, PR Author, etc.) to track workflow adoption  
 ✅ **Adoption Dashboard** — Real-time metrics showing commit patterns, branch compliance %, and hook status  
+✅ **Config File Support** — Customize branch validation patterns and dashboard commit types with `.gitflow-playbookrc.json`  
 
 ---
 
@@ -246,10 +247,25 @@ Checks:
 
 ## Roadmap
 
-- 🎯 **Config file support** (`.gitflow-playbookrc.json`) — Customize branch patterns, validation rules
 - 🎯 **Team leaderboards** — See who's earning badges fastest (optional analytics)
 - 🎯 **CI/CD integration** — Fail builds that violate branch or commit rules
 - 🎯 **Slack/Discord notifications** — Badge achievements and workflow milestones
+
+---
+
+## Configuration
+
+Create `.gitflow-playbookrc.json` in your repository root to override defaults:
+
+```json
+{
+  "branchPatterns": ["^feature/.+$", "^bugfix/.+$", "^main$"],
+  "commitTypes": ["feat", "fix", "docs", "chore", "test"]
+}
+```
+
+- `branchPatterns`: regex strings used by `preflight` branch checks and installed `pre-commit` hook
+- `commitTypes`: prefixes used by `dashboard` commit compliance metrics
 
 ---
 
